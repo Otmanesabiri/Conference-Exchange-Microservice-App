@@ -1,0 +1,66 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: keynote-service
+  datasource:
+    url: jdbc:h2:mem:keynote-db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/conference-realm
+      client:
+        registration:
+          keynote-service:
+            authorization-grant-type: client_credentials
+            client-id: keynote-service
+            client-secret: changeme
+            scope: internal
+        provider:
+          keynote-service:
+            issuer-uri: http://localhost:8080/realms/conference-realm
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.web: INFO

@@ -1,5 +1,47 @@
 # Spécification Fonctionnelle - Application de Gestion des Conférences
 
+## Architecture Technique
+
+### Vision d'ensemble
+- Architecture micro-services basée sur Spring Boot 3.5 et Spring Cloud 2025, segmentée en services métiers (`keynote-service`, `conference-service`) et services techniques (`gateway-service`, `discovery-service`, `config-service`).
+- Chaque micro-service est packagé en conteneur Docker, exposé sur un réseau overlay Docker Compose et communiqué via HTTP/JSON.
+- Les bases de données métier sont isolées : PostgreSQL (prod) ou H2 (dev) pour `keynote-service`, PostgreSQL/H2 pour `conference-service`. Les schémas sont gérés par Flyway.
+- L'observabilité repose sur Spring Boot Actuator, un agrégateur de logs (ELK ou Grafana Loki) et des métriques Prometheus/Grafana.
+
+### Flux applicatif principal
+1. L'utilisateur accède à l'application Angular (`angular-front-app`) servie par Nginx ; il est redirigé vers Keycloak pour l'authentification OIDC.
+2. Le jeton d'accès JWT est renvoyé côté front, stocké de manière sécurisée (HTTP-only cookie) et utilisé dans chaque requête vers la passerelle.
+3. Le `gateway-service` (Spring Cloud Gateway) valide le jeton auprès de Keycloak, enrichit les en-têtes et route la requête vers le micro-service ciblé.
+4. Le `discovery-service` (Eureka Server) référence dynamiquement les instances ; le gateway et les micro-services s'y enregistrent pour obtenir les adresses cibles.
+5. Les micro-services récupèrent leur configuration externe au démarrage via le `config-service` (Spring Cloud Config) connecté à un dépôt Git chiffré.
+6. `conference-service` consomme `keynote-service` via OpenFeign sécurisé, avec des circuit breakers Resilience4J et des fallbacks pour garantir la tolérance aux pannes.
+
+### Architecture logique des micro-services
+- **`keynote-service`** : couche web (Spring MVC + springdoc-openapi), service métier, couche DAO (Spring Data JPA), mapping DTO/Entity (MapStruct), base de données relationnelle dédiée.
+- **`conference-service`** : structure identique, enrichie par un client Feign, la gestion des reviews, le calcul de score, et une couche d'intégration Resilience4J.
+- Les deux services exposent une documentation Swagger UI (springdoc-openapi-starter) et des endpoints Actuator sécurisés.
+- Les tests automatisés combinent tests unitaires (JUnit 5, Mockito) et tests d'intégration (Testcontainers pour PostgreSQL, WireMock pour Feign).
+
+### Sécurité et gouvernance
+- Keycloak gère les realms, clients confidentiels/publics, rôles (`ROLE_ADMIN`, `ROLE_USER`) et mappages d'attributs.
+- Les micro-services utilisent Spring Security Resource Server (OAuth2) pour valider les JWT, avec propagation du contexte de sécurité via Feign et des règles RBAC par endpoint.
+- Les secrets (mots de passe DB, clés JWT) sont externalisés dans Vault ou chiffrés dans Config Server (Spring Cloud Config + Spring Cloud Vault).
+
+### Résilience, scalabilité et communication
+- Resilience4J (circuit breaker, retry, rate limiter) protège les appels inter-services ; le fallback renvoie des données dégradées.
+- Chaque conteneur est horizontalement scalable ; Eureka + Gateway assurent le load balancing round-robin.
+- La communication interne est synchrones (REST). Pour des évolutions asynchrones, l'architecture prévoit l'ajout d'un broker (Apache Kafka) sans impacter les contrats existants.
+
+### Infrastructure & déploiement
+- Environnement local : Docker Compose orchestrant `config-service`, `discovery-service`, `gateway-service`, `keynote-service`, `conference-service`, `angular-front-app`, `keycloak`, `postgres-keynote`, `postgres-conference`.
+- Environnement cible : Kubernetes (optionnel), avec Helm charts, ingress controller (Nginx), ConfigMaps/Secrets pour la configuration et Horizontal Pod Autoscaler.
+- CI/CD : GitHub Actions ou Jenkins pour builder les artefacts Maven, lancer les tests (unitaires + SonarCloud), publier les images dans un registry et déployer via Compose/K8s.
+
+### Gestion de la documentation et du monitoring
+- OpenAPI 3.0 généré automatiquement, publié via Swagger UI (gateway fournit un endpoint agrégé).
+- Logs centralisés, traçabilité distribuée via Spring Cloud Sleuth + Zipkin/Tempo.
+- Tableaux de bord Grafana pour le suivi des temps de réponse, du taux d'erreur et de la santé des circuit breakers.
+
 ## Périmètres des Microservices
 
 ### Microservice Keynote

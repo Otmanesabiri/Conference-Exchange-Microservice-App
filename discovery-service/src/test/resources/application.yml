@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: discovery-service-test
+  cloud:
+    config:
+      enabled: false
+
+server:
+  port: 0

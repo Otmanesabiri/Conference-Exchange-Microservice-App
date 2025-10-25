@@ -1,0 +1,88 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: conference-service
+  datasource:
+    url: jdbc:h2:mem:conference-db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+    loadbalancer:
+      ribbon:
+        enabled: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/conference-realm
+      client:
+        registration:
+          conference-service:
+            authorization-grant-type: client_credentials
+            client-id: conference-service
+            client-secret: changeme
+            scope: internal
+        provider:
+          conference-service:
+            issuer-uri: http://localhost:8080/realms/conference-realm
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+    instances:
+      keynoteClient:
+        base-config: default
+  retry:
+    instances:
+      keynoteClient:
+        max-attempts: 3
+        wait-duration: 300ms
+
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.glsid.exchange_conferce_app: DEBUG

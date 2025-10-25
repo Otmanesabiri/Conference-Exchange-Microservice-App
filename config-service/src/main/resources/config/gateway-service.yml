@@ -1,0 +1,61 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      default-filters:
+        - name: CircuitBreaker
+          args:
+            name: defaultCircuitBreaker
+            fallbackUri: forward:/fallback
+      routes:
+        - id: keynote-service
+          uri: lb://keynote-service
+          predicates:
+            - Path=/api/keynotes/**
+          filters:
+            - StripPrefix=1
+        - id: conference-service
+          uri: lb://conference-service
+          predicates:
+            - Path=/api/conferences/**, /api/reviews/**
+          filters:
+            - StripPrefix=1
+        - id: swagger
+          uri: lb://gateway-service
+          predicates:
+            - Path=/swagger-ui/**, /v3/api-docs/**
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+  pattern:
+    level: "%clr(%5p)"
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    urls:
+      - name: Keynote Service
+        url: /keynote-service/v3/api-docs
+      - name: Conference Service
+        url: /conference-service/v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+security:
+  oauth2:
+    resourceserver:
+      jwt:
+        issuer-uri: http://localhost:8080/realms/conference-realm
