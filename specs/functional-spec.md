@@ -168,3 +168,105 @@ Un keynote peut être assigné à plusieurs conférences, et une conférence peu
 - Conteneurisation avec Docker
 - Orchestration avec Docker Compose
 - Configuration des dépendances entre services
+- 
+
+graph TB
+    subgraph "Client Layer"
+        USER[👤 Utilisateur]
+        BROWSER[🌐 Navigateur Web]
+    end
+
+    subgraph "Frontend Layer"
+        ANGULAR[📱 Angular Front App<br/>Nginx]
+    end
+
+    subgraph "Security Layer"
+        KEYCLOAK[🔐 Keycloak<br/>Auth Service<br/>OAuth2/OIDC]
+    end
+
+    subgraph "Gateway Layer"
+        GATEWAY[🚪 Gateway Service<br/>Spring Cloud Gateway<br/>Port: 8888]
+    end
+
+    subgraph "Service Discovery"
+        EUREKA[📡 Discovery Service<br/>Eureka Server<br/>Port: 8761]
+    end
+
+    subgraph "Configuration"
+        CONFIG[⚙️ Config Service<br/>Spring Cloud Config<br/>Port: 8888]
+        GIT[(📦 Git Repository<br/>Configurations)]
+    end
+
+    subgraph "Business Services"
+        subgraph "Keynote Domain"
+            KEYNOTE[🎤 Keynote Service<br/>Spring Boot 3.5<br/>Port: 8081]
+            DB_KEYNOTE[(🗄️ PostgreSQL<br/>keynote-db)]
+        end
+        
+        subgraph "Conference Domain"
+            CONFERENCE[📅 Conference Service<br/>Spring Boot 3.5<br/>Port: 8082]
+            DB_CONFERENCE[(🗄️ PostgreSQL<br/>conference-db)]
+        end
+    end
+
+    subgraph "Monitoring & Observability"
+        ACTUATOR[📊 Spring Boot Actuator]
+        PROMETHEUS[📈 Prometheus]
+        GRAFANA[📉 Grafana]
+        ELK[📝 ELK Stack / Loki]
+        ZIPKIN[🔍 Zipkin / Tempo<br/>Distributed Tracing]
+    end
+
+    subgraph "Resilience Patterns"
+        RESILIENCE[🛡️ Resilience4J<br/>Circuit Breaker<br/>Retry<br/>Rate Limiter]
+    end
+
+    USER --> BROWSER
+    BROWSER --> ANGULAR
+    ANGULAR -->|1. Auth Request| KEYCLOAK
+    KEYCLOAK -->|2. JWT Token| ANGULAR
+    ANGULAR -->|3. API Calls + JWT| GATEWAY
+    
+    GATEWAY -->|Validate Token| KEYCLOAK
+    GATEWAY -->|Route Requests| KEYNOTE
+    GATEWAY -->|Route Requests| CONFERENCE
+    
+    KEYNOTE --> EUREKA
+    CONFERENCE --> EUREKA
+    GATEWAY --> EUREKA
+    
+    KEYNOTE --> CONFIG
+    CONFERENCE --> CONFIG
+    GATEWAY --> CONFIG
+    CONFIG --> GIT
+    
+    KEYNOTE --> DB_KEYNOTE
+    CONFERENCE --> DB_CONFERENCE
+    
+    CONFERENCE -->|OpenFeign<br/>+ Circuit Breaker| KEYNOTE
+    CONFERENCE --> RESILIENCE
+    
+    KEYNOTE --> ACTUATOR
+    CONFERENCE --> ACTUATOR
+    GATEWAY --> ACTUATOR
+    
+    ACTUATOR --> PROMETHEUS
+    PROMETHEUS --> GRAFANA
+    ACTUATOR --> ELK
+    ACTUATOR --> ZIPKIN
+
+    classDef frontend fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
+    classDef security fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef gateway fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef service fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    classDef database fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    classDef infra fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef monitoring fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    
+    class ANGULAR,BROWSER,USER frontend
+    class KEYCLOAK security
+    class GATEWAY gateway
+    class KEYNOTE,CONFERENCE service
+    class DB_KEYNOTE,DB_CONFERENCE database
+    class EUREKA,CONFIG,GIT infra
+    class ACTUATOR,PROMETHEUS,GRAFANA,ELK,ZIPKIN,RESILIENCE monitoring
