@@ -170,6 +170,7 @@ Un keynote peut être assigné à plusieurs conférences, et une conférence peu
 - Configuration des dépendances entre services
 - 
 
+```mermaid
 graph TB
     subgraph "Client Layer"
         USER[👤 Utilisateur]
@@ -270,3 +271,4 @@ graph TB
     class DB_KEYNOTE,DB_CONFERENCE database
     class EUREKA,CONFIG,GIT infra
     class ACTUATOR,PROMETHEUS,GRAFANA,ELK,ZIPKIN,RESILIENCE monitoring
+```
